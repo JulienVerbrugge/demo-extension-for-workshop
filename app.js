@@ -7,7 +7,8 @@ var logger = require('morgan');
 var app = express();
 
 app.use(logger('dev'));
-app.use(express.json());
+// Product grid actions send up to 3,000 product UUIDs (about 117 KB), above Express's 100 KB default.
+app.use(express.json({ limit: '1mb' }));
 app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
