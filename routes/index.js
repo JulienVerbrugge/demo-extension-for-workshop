@@ -9,7 +9,31 @@ const jwt = require('jsonwebtoken');
 const { getAkeneoToken } = require('../src/helpers/getAkeneoToken');
 const { getProductIdentifierFromUUID } = require('../src/helpers/getProductIdentifierFromUUID');
 const { getProduct } = require('../src/helpers/getProduct');
+const { scheduleRelease } = require('../src/helpers/scheduleRelease');
 const FormData = require('form-data');
+
+const RELEASE_DELAY_IN_DAYS = 7;
+
+// Product grid action: answers at once, then sets release_date on every selected product,
+// so that a large selection never hits the PIM's 5-second wait.
+router.post('/schedule-release', (req, res) => {
+  const productUuids = req.body.data?.productUuids;
+  const channel = req.body.context?.channel;
+
+  if (!Array.isArray(productUuids) || productUuids.length === 0 || !channel) {
+    return res.status(400).json({ error: 'data.productUuids and context.channel are required' });
+  }
+
+  const releaseDate = new Date(Date.now() + RELEASE_DELAY_IN_DAYS * 24 * 3600 * 1000).toISOString().slice(0, 10);
+  res.status(202).json({ accepted: productUuids.length, releaseDate });
+
+  scheduleRelease(productUuids, channel, releaseDate)
+    .then(({ updated, failures, seconds }) => {
+      console.log(`schedule-release: ${updated}/${productUuids.length} products set to ${releaseDate} on ${channel} in ${seconds}s`);
+      failures.slice(0, 5).forEach((failure) => console.error('schedule-release failure:', JSON.stringify(failure)));
+    })
+    .catch((error) => console.error('schedule-release error:', error.response?.data || error.message));
+});
 
 router.post('/generate-pdf', async (req, res) => {
   const { data, context, user, timestamp } = req.body;
