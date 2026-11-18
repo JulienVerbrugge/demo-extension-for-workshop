@@ -1,1 +1,1 @@
-# custom-app-host-test
+# demo-extension-for-workshop
